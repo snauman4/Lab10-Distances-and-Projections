@@ -1,0 +1,114 @@
+[
+  {
+    "objectID": "Lab-10.html",
+    "href": "Lab-10.html",
+    "title": "Lab 10: Distances and the Border Zone",
+    "section": "",
+    "text": "# spatial data science\nlibrary(tidyverse)\n\n── Attaching core tidyverse packages ──────────────────────── tidyverse 2.0.0 ──\n✔ dplyr     1.1.4     ✔ readr     2.1.5\n✔ forcats   1.0.0     ✔ stringr   1.5.1\n✔ ggplot2   3.5.2     ✔ tibble    3.2.1\n✔ lubridate 1.9.4     ✔ tidyr     1.3.1\n✔ purrr     1.0.4     \n── Conflicts ────────────────────────────────────────── tidyverse_conflicts() ──\n✖ dplyr::filter() masks stats::filter()\n✖ dplyr::lag()    masks stats::lag()\nℹ Use the conflicted package (&lt;http://conflicted.r-lib.org/&gt;) to force all conflicts to become errors\n\nlibrary(sf)\n\nLinking to GEOS 3.13.0, GDAL 3.8.5, PROJ 9.5.1; sf_use_s2() is TRUE\n\nlibrary(units)\n\nudunits database from /Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/library/units/share/udunits/udunits2.xml\n\n# Data\nlibrary(AOI)\n\n# Visualization\nlibrary(gghighlight)\nlibrary(ggrepel)\nlibrary(knitr)\nlibrary(dplyr)"
+  },
+  {
+    "objectID": "Lab-10.html#define-a-projection",
+    "href": "Lab-10.html#define-a-projection",
+    "title": "Lab 10: Distances and the Border Zone",
+    "section": "1.1 Define a Projection",
+    "text": "1.1 Define a Projection\n\n# North America Equidistant Conic:\neqdc &lt;- '+proj=eqdc +lat_0=40 +lon_0=-96 +lat_1=20 +lat_2=60 +x_0=0 +y_0=0 +datum=NAD83 +units=m +no_defs'"
+  },
+  {
+    "objectID": "Lab-10.html#get-usa-state-boundaries",
+    "href": "Lab-10.html#get-usa-state-boundaries",
+    "title": "Lab 10: Distances and the Border Zone",
+    "section": "1.2 Get USA State Boundaries",
+    "text": "1.2 Get USA State Boundaries\n\nremotes::install_github(\"mikejohnson51/AOI\", force = TRUE)\n\nUsing GitHub PAT from the git credential store.\n\n\nDownloading GitHub repo mikejohnson51/AOI@HEAD\n\n\n\n── R CMD build ─────────────────────────────────────────────────────────────────\n* checking for file ‘/private/var/folders/4v/w94pbb4j1zn3s0sk_21nhthr0000gn/T/Rtmp5b3nYN/remotes9db1cc022d5/mikejohnson51-AOI-f821d49/DESCRIPTION’ ... OK\n* preparing ‘AOI’:\n* checking DESCRIPTION meta-information ... OK\n* checking for LF line-endings in source and make files and shell scripts\n* checking for empty or unneeded directories\n* building ‘AOI_0.3.0.tar.gz’\n\n# getting USA state boundaries\nstate_bounds &lt;- aoi_get(state = 'conus')\n\n# putting data for a projected coordinate system\neqdc_state_bounds &lt;- (eqdc_state_bounds = st_transform(state_bounds, eqdc)) %&gt;%\n  filter(!state_abbr %in% c(\"HI\",\"AK\",\"PR\"))"
+  },
+  {
+    "objectID": "Lab-10.html#get-country-boundaries-for-mexico-usa-and-canada",
+    "href": "Lab-10.html#get-country-boundaries-for-mexico-usa-and-canada",
+    "title": "Lab 10: Distances and the Border Zone",
+    "section": "1.3 Get country boundaries for Mexico, USA, and Canada",
+    "text": "1.3 Get country boundaries for Mexico, USA, and Canada\n\ncountry_bounds &lt;- aoi_get(country = c(\"MX\", \"CA\", \"USA\"))\n\neqdc_country_bounds &lt;- (eqdc_country_bounds = st_transform(country_bounds, eqdc))"
+  },
+  {
+    "objectID": "Lab-10.html#get-city-locations-from-the-csv-file",
+    "href": "Lab-10.html#get-city-locations-from-the-csv-file",
+    "title": "Lab 10: Distances and the Border Zone",
+    "section": "1.4 Get city locations from the CSV file",
+    "text": "1.4 Get city locations from the CSV file\n\nus_cities &lt;- readr::read_csv(\"data/uscities.csv\")\n\nRows: 31254 Columns: 17\n── Column specification ────────────────────────────────────────────────────────\nDelimiter: \",\"\nchr (9): city, city_ascii, state_id, state_name, county_fips, county_name, s...\ndbl (6): lat, lng, population, density, ranking, id\nlgl (2): military, incorporated\n\nℹ Use `spec()` to retrieve the full column specification for this data.\nℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.\n\n# converting the data frame into a spatial object\nus_cities_df &lt;- data.frame(\n  city = us_cities$city,\n  state = us_cities$state_name,\n  state_id = us_cities$state_id,\n  population = us_cities$population,\n  X = us_cities$lng,\n  Y = us_cities$lat) %&gt;%\n  filter(!state %in% c(\"Hawaii\",\"Alaska\",\"Puerto Rico\"))\n  # using st_as_sf\nusc_gcs &lt;- st_as_sf(us_cities_df, \n                    coords = c(\"X\", \"Y\"), \n                    crs = 4326)\n  # remove cities in unwanted states and put the data in a pcd (st_transform)\neqdc_cities &lt;- st_transform(usc_gcs, crs = eqdc) \nst_transform(eqdc_cities, eqdc)\n\nSimple feature collection with 30460 features and 4 fields\nGeometry type: POINT\nDimension:     XY\nBounding box:  xmin: -2224960 ymin: -1601759 xmax: 2115970 ymax: 1275635\nProjected CRS: +proj=eqdc +lat_0=40 +lon_0=-96 +lat_1=20 +lat_2=60 +x_0=0 +y_0=0 +datum=NAD83 +units=m +no_defs\nFirst 10 features:\n           city                state state_id population\n1      New York             New York       NY   18832416\n2   Los Angeles           California       CA   11885717\n3       Chicago             Illinois       IL    8489066\n4         Miami              Florida       FL    6113982\n5       Houston                Texas       TX    6046392\n6        Dallas                Texas       TX    5843632\n7  Philadelphia         Pennsylvania       PA    5696588\n8       Atlanta              Georgia       GA    5211164\n9    Washington District of Columbia       DC    5146120\n10       Boston        Massachusetts       MA    4355184\n                      geometry\n1     POINT (1735953 288853.9)\n2   POINT (-1939654 -413013.8)\n3    POINT (647708.4 233687.9)\n4     POINT (1533406 -1443153)\n5    POINT (56701.32 -1132947)\n6  POINT (-68280.37 -799394.5)\n7     POINT (1659945 192150.8)\n8    POINT (1014684 -627491.8)\n9     POINT (1537869 39511.94)\n10    POINT (1905157 520168.1)"
+  },
+  {
+    "objectID": "Lab-10.html#distance-to-usa-border-coastline-or-national-km",
+    "href": "Lab-10.html#distance-to-usa-border-coastline-or-national-km",
+    "title": "Lab 10: Distances and the Border Zone",
+    "section": "2.1 Distance to USA Border (coastline or national) (km)",
+    "text": "2.1 Distance to USA Border (coastline or national) (km)\n\nus_border &lt;- eqdc_state_bounds %&gt;%\n  st_union() %&gt;%\n  st_cast(\"MULTILINESTRING\") \n\neqdc_cities$distance_to_border &lt;- st_distance(eqdc_cities, us_border)\n\neqdc_cities &lt;- eqdc_cities %&gt;%\n  mutate(distance_to_border = as.numeric(distance_to_border[,1]/1000))\n\ntop5_farthest &lt;- eqdc_cities %&gt;%\n  slice_max(order_by = distance_to_border, n = 5, with_ties = FALSE) %&gt;%\n  st_drop_geometry() %&gt;%\n  mutate(distance_to_border = paste0(round(distance_to_border,1), \"km\"))\n\nflextable::flextable(top5_farthest)\n\ncitystatestate_idpopulationdistance_to_borderMinneapolisKansasKS2,1011084.3kmAdaKansasKS701084.1kmBarnardKansasKS841083.7kmManchesterKansasKS771080.2kmTalmageKansasKS941080km"
+  },
+  {
+    "objectID": "Lab-10.html#distance-to-states-km",
+    "href": "Lab-10.html#distance-to-states-km",
+    "title": "Lab 10: Distances and the Border Zone",
+    "section": "2.2 Distance to States (km)",
+    "text": "2.2 Distance to States (km)\n\nstate_borders_preserved &lt;- eqdc_state_bounds %&gt;%\n  st_cast(\"MULTILINESTRING\")\n\ndist_matrix_state &lt;- st_distance(eqdc_cities, state_borders_preserved)\n\neqdc_cities &lt;- eqdc_cities %&gt;%\n  mutate(dist_to_state_border_km = as.numeric(dist_matrix_state[,1])/1000)\n\nfarthest_cities_from_states &lt;- eqdc_cities %&gt;%\n  arrange(desc(dist_to_state_border_km)) %&gt;%\n  slice(1:5) %&gt;%\n  st_drop_geometry() %&gt;%\n  select(city_name = city, state, dist_to_state_border_km) %&gt;%\n  mutate(dist_to_state_border_km = paste0(round(dist_to_state_border_km, 1), \"km\"))\n\nflextable::flextable(farthest_cities_from_states)\n\ncity_namestatedist_to_state_border_kmNeah BayWashington3179.9kmSekiuWashington3156kmForksWashington3152.8kmClallam BayWashington3152.7kmQueetsWashington3137.3km"
+  },
+  {
+    "objectID": "Lab-10.html#distance-to-mexico-km",
+    "href": "Lab-10.html#distance-to-mexico-km",
+    "title": "Lab 10: Distances and the Border Zone",
+    "section": "2.3 Distance to Mexico (km)",
+    "text": "2.3 Distance to Mexico (km)\n\n# isolate Mexico\nMexico &lt;- eqdc_country_bounds %&gt;%\n  filter(sovereignt == \"Mexico\")\n\nMexico &lt;- st_transform(Mexico, eqdc)\n\nmx_border &lt;- Mexico %&gt;%\n  st_cast(\"MULTILINESTRING\")\n\n# calculate distance \ndist_matrix_mexico &lt;- st_distance(eqdc_cities, mx_border)\n\neqdc_cities &lt;- eqdc_cities %&gt;%\n  mutate(distance_to_mexico = as.numeric(dist_matrix_mexico[,1])/1000)\n\ntop5_mx &lt;- eqdc_cities %&gt;%\n  arrange(desc(distance_to_mexico)) %&gt;%\n  slice(1:5) %&gt;%\n  st_drop_geometry() %&gt;%\n  select(city, state, distance_to_mexico)\n\nflextable::flextable(top5_mx)\n\ncitystatedistance_to_mexicoGrand IsleMaine3,282.825CaribouMaine3,250.330Presque IsleMaine3,234.570OakfieldMaine3,175.577Island FallsMaine3,162.285"
+  },
+  {
+    "objectID": "Lab-10.html#distance-to-canada-km",
+    "href": "Lab-10.html#distance-to-canada-km",
+    "title": "Lab 10: Distances and the Border Zone",
+    "section": "2.4 Distance to Canada (km)",
+    "text": "2.4 Distance to Canada (km)\n\n# isolate Canada\nCanada &lt;- eqdc_country_bounds %&gt;%\n  filter(sovereignt == \"Canada\")\n\nCanada &lt;- st_transform(Canada, eqdc)\n\ncd_border &lt;- Canada %&gt;%\n  st_cast(\"MULTILINESTRING\")\n\n# calculate distance \ndist_matrix_canada &lt;- st_distance(eqdc_cities, cd_border)\n\neqdc_cities &lt;- eqdc_cities %&gt;%\n  mutate(distance_to_canada = as.numeric(dist_matrix_canada[,1])/1000)\n\ntop5_cd &lt;- eqdc_cities %&gt;%\n  arrange(desc(distance_to_canada)) %&gt;%\n  slice(1:5) %&gt;%\n  st_drop_geometry() %&gt;%\n  select(city, state, distance_to_canada)\n\nflextable::flextable(top5_cd)\n\ncitystatedistance_to_canadaGuadalupe GuerraTexas2,206.455SandovalTexas2,205.641FrontonTexas2,204.794Fronton RanchettesTexas2,202.118EvergreenTexas2,202.020"
+  },
+  {
+    "objectID": "Lab-10.html#data",
+    "href": "Lab-10.html#data",
+    "title": "Lab 10: Distances and the Border Zone",
+    "section": "3.1 Data",
+    "text": "3.1 Data\n\ntop10_cities &lt;- eqdc_cities |&gt;\n  arrange(desc(population)) |&gt;\n  slice_head(n=10)\n\nggplot() +\n  geom_sf(data = eqdc_country_bounds, fill = \"grey\", color = \"black\", lty = 1) +\n  geom_sf(data = eqdc_state_bounds, fill = NA, color = \"grey\", lty = 2, size = 0.5) +\n  geom_sf(data = us_border, fill = NA, color = \"black\", size = 0.7) +\n  geom_sf(data = top10_cities, color = \"blue\", size = 2) + \n  ggrepel::geom_label_repel(\n    data = top10_cities,\n    aes(geometry = geometry, label = city), \n    stat = \"sf_coordinates\",\n    size = 3) + \n  theme_minimal()"
+  },
+  {
+    "objectID": "Lab-10.html#city-distance-from-the-border",
+    "href": "Lab-10.html#city-distance-from-the-border",
+    "title": "Lab 10: Distances and the Border Zone",
+    "section": "3.2 City Distance from the Border",
+    "text": "3.2 City Distance from the Border\n\n# Cities farthest from US border is: top5_farthest\ntop5_us_border &lt;- eqdc_cities |&gt;\n  arrange(desc(distance_to_border)) |&gt;\n  slice_head(n=5)\n\nggplot() +\n  geom_sf(data = us_border, fill = NA, color = \"black\", lty = 1) +\n  geom_sf(data = eqdc_state_bounds, fill = NA, color = \"grey\", lty = 2, size = 0.5) +\n  geom_sf(data = eqdc_cities, aes(color = dist_to_state_border_km), size = 1) +\n  scale_color_viridis_c(option = \"magma\", name = \"Distance to US Border (km)\") + \n  geom_sf(data = top5_us_border, color = \"blue\", size = 2) + \n  ggrepel::geom_label_repel(\n    data = top5_us_border,\n    aes(geometry = geometry, label = city), \n    stat = \"sf_coordinates\",\n    size = 3) + \n  theme_minimal()"
+  },
+  {
+    "objectID": "Lab-10.html#city-distance-from-nearest-state",
+    "href": "Lab-10.html#city-distance-from-nearest-state",
+    "title": "Lab 10: Distances and the Border Zone",
+    "section": "3.3 City Distance from Nearest State",
+    "text": "3.3 City Distance from Nearest State\n\ntop5_state_border &lt;- eqdc_cities |&gt;\n  arrange(desc(dist_to_state_border_km)) |&gt;\n  slice_head(n=5)\n\nggplot() +\n  geom_sf(data = us_border, fill = NA, color = \"black\", lty = 1) +\n  geom_sf(data = eqdc_state_bounds, fill = NA, color = \"grey\", lty = 2, size = 0.5) +\n  geom_sf(data = eqdc_cities, aes(color = dist_to_state_border_km), size = 1) +\n  scale_color_viridis_c(option = \"magma\", name = \"Distance to State Borders (km)\") + \n  geom_sf(data = top5_state_border, color = \"blue\", size = 2) + \n  ggrepel::geom_label_repel(\n    data = top5_state_border,\n    aes(geometry = geometry, label = city), \n    stat = \"sf_coordinates\",\n    size = 3) + \n  theme_minimal()"
+  },
+  {
+    "objectID": "Lab-10.html#equidistance-boundary-from-mexico-and-canada",
+    "href": "Lab-10.html#equidistance-boundary-from-mexico-and-canada",
+    "title": "Lab 10: Distances and the Border Zone",
+    "section": "3.4 Equidistance boundary from Mexico and Canada",
+    "text": "3.4 Equidistance boundary from Mexico and Canada\n\n# Create absolute difference column \neqdc_cities &lt;- eqdc_cities |&gt;\n  mutate(abs_diff_can_mex = abs(distance_to_mexico - distance_to_canada))\n\ndist_matrix_mexico &lt;- st_distance(eqdc_cities, mx_border)\n  \neqdc_cities &lt;- eqdc_cities |&gt; \n  mutate(distance_to_mexico = as.numeric(dist_matrix_mexico[,1])/1000)\n\n# Filter cities within +/- 100km of equidistance\nequidistant_cities &lt;- eqdc_cities |&gt;\n  filter(abs_diff_can_mex &lt;= 100)\n\n# Get 5 most populous equidistant cities\ntop5_eqdist &lt;- equidistant_cities |&gt;\n  arrange(desc(population)) |&gt;\n  slice_head(n=5)\n\n# Plot\nggplot() +\n  geom_sf(data = us_border, fill = NA, color = \"black\") +\n  geom_sf(data = eqdc_state_bounds, fill = NA, color = \"grey\", size = 0.5) +\n  geom_sf(data = equidistant_cities, aes(color = abs_diff_can_mex), size = 1) +\n  scale_color_viridis_c(name = \"|Canada - Mexico| Distance (km)\") +\n  geom_sf(data = top5_eqdist, color = \"red\", size = 2) +\n  gghighlight(abs_diff_can_mex &lt;= 100, use_direct_label = FALSE) +  \n  ggrepel::geom_label_repel(\n    data = top5_eqdist,\n    aes(geometry = geometry, label = city),\n    stat = \"sf_coordinates\",\n    size = 3\n  ) +\n  theme_minimal() +\n  labs(\n    title = \"Cities ~100 km Equidistant from Canadian and Mexican Borders\",\n    subtitle = \"Top 5 Most Populous Cities Highlighted\"\n  )\n\nWarning: Could not calculate the predicate for layer 1, layer 2; ignored"
+  },
+  {
+    "objectID": "Lab-10.html#quantifying-border-zone",
+    "href": "Lab-10.html#quantifying-border-zone",
+    "title": "Lab 10: Distances and the Border Zone",
+    "section": "4.1 Quantifying Border Zone",
+    "text": "4.1 Quantifying Border Zone\n\ncities_in_border_zone &lt;- eqdc_cities |&gt;\n  filter(distance_to_border &lt;= 160)\n\nnum_cities_in_border_zone &lt;- nrow(cities_in_border_zone)\n\ntotal_population_border_zone &lt;- sum(cities_in_border_zone$population)\n\ntotal_population_all_cities &lt;- sum(eqdc_cities$population)\n\npercent_population_in_border_zone &lt;- (total_population_border_zone / total_population_all_cities)*100\n\n# Create summary table\nborder_summary_tbl &lt;- tibble(\n  `Number of Cities` = num_cities_in_border_zone,\n  `Total Population in Border Zone` = total_population_border_zone,\n  `Total Population (All Cities)` = total_population_all_cities,\n  `Percent Population in Border Zone` = round(percent_population_in_border_zone, 1)\n)\n\n# Convert to flextable\nlibrary(flextable)\n\n\nAttaching package: 'flextable'\n\n\nThe following object is masked from 'package:purrr':\n\n    compose\n\nflextable(border_summary_tbl) |&gt;\n  set_caption(\"Summary of Cities within 160 km of U.S. National Border\") |&gt;\n  colformat_int(j = c(\"Number of Cities\", \"Total Population in Border Zone\", \"Total Population (All Cities)\")) |&gt;\n  colformat_num(j = \"Percent Population in Border Zone\", suffix = \"%\", digits = 1) |&gt;\n  autofit() |&gt;\n  theme_vanilla()\n\nNumber of CitiesTotal Population in Border ZoneTotal Population (All Cities)Percent Population in Border Zone9,813216,043,045396,228,55854.5%"
+  },
+  {
+    "objectID": "Lab-10.html#mapping-border-zone",
+    "href": "Lab-10.html#mapping-border-zone",
+    "title": "Lab 10: Distances and the Border Zone",
+    "section": "4.2 Mapping Border Zone",
+    "text": "4.2 Mapping Border Zone\n\ntop10_borderzone &lt;- cities_in_border_zone |&gt;\n  arrange(desc(population)) |&gt;\n  slice_head(n=10)\n\nlibrary(gghighlight)\n\nggplot() + \n  geom_sf(data = eqdc_cities, aes(color = distance_to_border), size = 1) +  \n  geom_sf(data = us_border, fill = NA, color = \"black\") +\n  geom_sf(data = eqdc_state_bounds, fill = NA, color = \"grey\", size = 0.5) +\n  scale_color_gradient(low = \"orange\", high = \"darkred\", name = \"Distance to Border (km)\") +\n  geom_sf(data = top10_borderzone, color = \"blue\", size = 2) +\n  gghighlight(distance_to_border &lt;= 100, use_direct_label = FALSE) +\n  ggrepel::geom_label_repel(\n    data = top10_borderzone,\n    aes(geometry = geometry, label = city),\n    stat = \"sf_coordinates\",\n    size = 3,\n    box.padding = 0.3,\n    max.overlaps = Inf\n  ) +\n  labs(title = \"Cities Within 100-Mile Border Zone\",\n       subtitle = \"Top 10 most populous cities highlighted\",\n       caption = \"Distance from national border (km)\") +\n  theme_minimal()\n\nWarning: Could not calculate the predicate for layer 2, layer 3; ignored"
+  },
+  {
+    "objectID": "Lab-10.html#instead-of-labeling-the-10-most-populous-cities-label-the-most-populous-city-in-each-state-within-the-danger-zone",
+    "href": "Lab-10.html#instead-of-labeling-the-10-most-populous-cities-label-the-most-populous-city-in-each-state-within-the-danger-zone",
+    "title": "Lab 10: Distances and the Border Zone",
+    "section": "4.3 Instead of labeling the 10 most populous cities, label the most populous city in each state within the Danger Zone",
+    "text": "4.3 Instead of labeling the 10 most populous cities, label the most populous city in each state within the Danger Zone\n\nmost_populous_per_state &lt;- cities_in_border_zone |&gt;\n  group_by(state) |&gt;\n  slice_max(order_by = population, n=1, with_ties = FALSE)\n\nggplot() +\n  geom_sf(data = eqdc_cities, aes(color = distance_to_border), size = 1) +  \n  geom_sf(data = us_border, fill = NA, color = \"black\") +\n  geom_sf(data = eqdc_state_bounds, fill = NA, color = \"grey\", size = 0.5) +\n  scale_color_gradient(low = \"orange\", high = \"darkred\", name = \"Distance to Border (km)\") +\n  geom_sf(data = most_populous_per_state, color = \"blue\", size = 2) +\n  gghighlight(distance_to_border &lt;= 100, use_direct_label = FALSE) +\n  ggrepel::geom_label_repel(\n    data = most_populous_per_state,\n    aes(geometry = geometry, label = city),\n    stat = \"sf_coordinates\",\n    size = 3,\n    box.padding = 0.3,\n    max.overlaps = Inf\n  ) +\n  labs(title = \"Most Populous Cities Within Their State in the 100-Mile Border Zone\",\n       subtitle = \"Most populous cities highlighted\",\n       caption = \"Distance from national border (km)\") +\n  theme_minimal()\n\nWarning: Could not calculate the predicate for layer 2, layer 3; ignored"
+  }
+]
