@@ -185,7 +185,7 @@ top5_us_border <- eqdc_cities |>
 ggplot() +
   geom_sf(data = us_border, fill = NA, color = "black", lty = 1) +
   geom_sf(data = eqdc_state_bounds, fill = NA, color = "grey", lty = 2, size = 0.5) +
-  geom_sf(data = eqdc_cities, aes(color = dist_to_state_border_km), size = 1) +
+  geom_sf(data = eqdc_cities, aes(color = distance_to_border), size = 1) +
   scale_color_viridis_c(option = "magma", name = "Distance to US Border (km)") + 
   geom_sf(data = top5_us_border, color = "blue", size = 2) + 
   ggrepel::geom_label_repel(
